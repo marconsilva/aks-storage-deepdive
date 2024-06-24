@@ -1,0 +1,11 @@
+apiVersion: containerstorage.azure.com/v1
+kind: StoragePool
+metadata:
+  name: sp-preprovisioned
+  namespace: acstor
+spec:
+  poolType:
+    azureDisk:
+      disks:
+        - reference <resource-id1>
+        - reference <resource-id2>
