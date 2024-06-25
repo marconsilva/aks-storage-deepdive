@@ -42,7 +42,15 @@ You have the following options for creating a storage pool:
 
 we will be using a Dynamic storage pool for this lab.
 
-first lets create a storage pool
+First Lest enable the Azure Container Storage extension for the AKS cluster
+
+```powershell
+az aks update -n $CLUSTER -g $RESOURCE_GROUP --enable-azure-container-storage "azureDisk"
+#az aks update -n $CLUSTER -g $RESOURCE_GROUP --enable-azure-container-storage "elasticSan"
+#az aks update -n $CLUSTER -g $RESOURCE_GROUP --enable-azure-container-storage "ephemeralDisk"
+```
+
+Now lets create a storage pool
 
 ```powershell
 kubectl create namespace acstor

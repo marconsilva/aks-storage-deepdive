@@ -40,7 +40,7 @@ az keyvault create -n $VAULT_NAME -g $RESOURCE_GROUP -l $LOCATION
 
 ```powershell
 # create an AKS with Azure CNI Overlay Network Plugin
-az aks create -n $CLUSTER -g $RESOURCE_GROUP --location $LOCATION --network-plugin azure --network-plugin-mode overlay --pod-cidr 192.168.0.0/16 --generate-ssh-keys --node-vm-size Standard_DS4_v5 --node-count 3
+az aks create -n $CLUSTER -g $RESOURCE_GROUP --location $LOCATION --network-plugin azure --network-plugin-mode overlay --pod-cidr 192.168.0.0/16 --generate-ssh-keys --node-vm-size Standard_DS4_v2 --node-count 3
 ```
 
 
