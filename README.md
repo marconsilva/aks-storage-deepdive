@@ -335,6 +335,8 @@ kubectl apply -f esan-pod-service.yaml
 
 ## 5. Lab 3: Provision/enable Azure Container Storage in an AKS Cluster and Stress Testing
 
+
+
 ## 6. Lab 4: Manage and expand Ephemeral storage
 
 ## 7. Lab 5: Provision/enable NetApp Files NFS volumes, SMB volumes and dual-protocol volumes
