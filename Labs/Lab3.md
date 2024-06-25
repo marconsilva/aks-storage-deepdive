@@ -19,7 +19,7 @@ az role assignment create --assignee $AKS_MI_OBJECT_ID --role "Azure Container S
 The initial install uses Azure Arc CLI commands to download a new extension.
 
 ```powershell
-az k8s-extension create --cluster-type managedClusters --cluster-name $CLUSTER --resource-group $RESOURCE_GROUP --name "aksstoragelab" --extension-type microsoft.azurecontainerstorage --scope cluster --release-train stable --release-namespace acstor
+az k8s-extension create --cluster-type managedClusters --cluster-name $CLUSTER --resource-group $RESOURCE_GROUP --name "azurecontainerstorage" --extension-type microsoft.azurecontainerstorage --scope cluster --release-train stable --release-namespace acstor
 ```
 
 Installation takes 10-15 minutes to complete. You can check if the installation completed correctly by running the following command and ensuring that provisioningState says **Succeeded**:
@@ -42,23 +42,62 @@ You have the following options for creating a storage pool:
 
 we will be using a Dynamic storage pool for this lab.
 
-First Lest enable the Azure Container Storage extension for the AKS cluster
+First lets create a storage pool
 
 ```powershell
-az aks update -n $CLUSTER -g $RESOURCE_GROUP --enable-azure-container-storage "azureDisk"
-#az aks update -n $CLUSTER -g $RESOURCE_GROUP --enable-azure-container-storage "elasticSan"
-#az aks update -n $CLUSTER -g $RESOURCE_GROUP --enable-azure-container-storage "ephemeralDisk"
-```
-
-Now lets create a storage pool
-
-```powershell
-kubectl create namespace acstor
-
 kubectl apply -f acstor-storagepool.yaml
 ```
 
+Lets see the storage pool we just created
 
+```powershell
+kubectl describe sp azuredisk -n acstor
+```
 
+When the storage pool is created, Azure Container Storage will create a storage class on your behalf, using the naming convention acstor-<storage-pool-name>. Now we can display the available storage classes and create a persistent volume claim.
+
+To display the available storage classes, run the following command:
+
+```powershell
+kubectl get sc 
+```
+
+### 2.1 Create a persistent volume claim
+
+Now that we created the storage pool, and storage class, we can create a persistent volume claim (PVC) to use the storage class. 
+
+Lest your the following command to create the PVC:
+
+```powershell
+kubectl apply -f acstor-pvc.yaml
+```
+You can verify the status of the PVC by running the following command:
+
+```powershell
+kubectl describe pvc azurediskpvc
+```
+
+### 2.2 Deploy a pod and attach a persistent volume to it
+
+Lets create a pod using Fio (Flexible I/O Tester) for benchmarking and workload simulation, and specify a mount path for the persistent volume.
+
+To to this, run the following command:
+
+```powershell
+kubectl apply -f acstor-pod.yaml
+```
+
+Check that the pod is running and that the persistent volume claim has been bound successfully to the pod:
+
+```powershell
+kubectl describe pod fiopod
+kubectl describe pvc azurediskpvc
+```
+
+Now lets make some load on the storage to see how it behaves under load.
+
+```powershell
+kubectl exec -it fiopod -- fio --name=benchtest --size=800m --filename=/volume/test --direct=1 --rw=randrw --ioengine=libaio --bs=4k --iodepth=16 --numjobs=8 --time_based --runtime=60
+```
 
 ### 3. Use Azure Container Storage Preview with Azure Elastic SAN

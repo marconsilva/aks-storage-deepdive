@@ -51,7 +51,7 @@ az extension update --name aks-preview
 az provider register --namespace Microsoft.Network
 az provider register --namespace Microsoft.NetworkFunction
 az provider register --namespace Microsoft.ServiceNetworking
-az provider register --namespace Microsoft.ContainerService --name "TrustedAccessPreview"
+az provider register --namespace Microsoft.ContainerService
 az extension add --upgrade --name k8s-extension
 az provider register --namespace Microsoft.Kubernetes
 az provider register --namespace Microsoft.KubernetesConfiguration
