@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: esan-nginx
+  namespace: aksesan
+  labels:
+    app: esan-nginx
+spec:
+  containers:
+    - image: maersk/nginx
+      imagePullPolicy: Always
+      name: nginx
+      ports:
+        - containerPort: 80
+          protocol: TCP
+      resources:
+        limits:
+          cpu: "1"
+          memory: "512Mi"
+      volumeMounts:
+        - mountPath: /var/www
+          name: iscsi-volume
+  volumes:
+    - name: iscsi-volume
+      persistentVolumeClaim:
+        claimName: iscsiplugin-pvc

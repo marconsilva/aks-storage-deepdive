@@ -9,11 +9,11 @@ Repo with all the content needed for the AKS Storage Deep Dive session.
 1. [Pre-Requirements](#1-pre-requirements)
 2. [Environment Setup](#2-environment-setup)
 3. [Lab 1: Provision/enable CSI Storage Drivers and Expand Without Downtime](#3-lab-1-provisionenable-csi-storage-drivers-and-expand-without-downtime)
-4. [Lab 2: Provision/enable Azure Elastic SAN in an existing AKS Cluster and Stress Testing](#4-lab-2-provisionenable-azure-elastic-san-in-an-existing-aks-cluster-and-stress-testing)
+4. [Lab 2: Provision/enable Azure Elastic SAN in an existing AKS Cluster using iSCSI CSI driver](#4-lab-2-provisionenable-azure-elastic-san-in-an-existing-aks-cluster-using-iscsi-csi-driver)
 5. [Lab 3: Provision/enable Azure Container Storage in an AKS Cluster and Stress Testing](#5-lab-3-provisionenable-azure-container-storage-in-an-aks-cluster-and-stress-testing)
 6. [Lab 4: Manage and expand Ephemeral storage](#6-lab-4-manage-and-expand-ephemeral-storage)
 7. [Lab 5: Provision/enable NetApp Files NFS volumes, SMB volumes and dual-protocol volumes](#7-lab-5-provisionenable-netapp-files-nfs-volumes-smb-volumes-and-dual-protocol-volumes)
-8. [Lab 6: Provision/enable NVMe PV in AKS Nodepool and do some stress testing](#8-lab-6-provisionenable-nvme-pv-in-aks-nodepool-and-do-some-stress-testing)
+8. [Lab 6: Provision/enable NVMe PV in AKS Nodepool](#8-lab-6-provisionenable-nvme-pv-in-aks-nodepool)
 9. [Lab 7: Configure Backup on a cluster and how to use Resource Modification to patch backed-up](#9-lab-7-configure-backup-on-a-cluster-and-how-to-use-resource-modification-to-patch-backed-up)
 10. [Lab 8: Configure Velero using Azure Blob Storage on a cluster](#10-lab-8-configure-velero-using-azure-blob-storage-on-a-cluster)
 
@@ -45,7 +45,7 @@ After running all the pre-requisites, please follow the below steps
 ### 2.2.1. Clone the repository (Local Machine only)
 
 ```poweshell
-git clone
+git clone https://github.com/marconsilva/aks-storage-deepdive.git
 cd aks-storage-deep-dive
 ```
 
@@ -96,6 +96,8 @@ kubectl get svc store-front -n aksappga -o jsonpath='{.status.loadBalancer.ingre
 curl http://<ingress-ip>
 ```
 
+Congratulations! You have successfully deployed the AKS Store Demo application, and have a working cluster for running the AKS Storage Deep Dive Labs.
+
 ## 3. Lab 1: Provision/enable CSI Storage Drivers and expand without downtime
 
 The Container Storage Interface (CSI) is a standard for exposing arbitrary block and file storage systems to containerized workloads on Kubernetes. By adopting and using CSI, Azure Kubernetes Service (AKS) can write, deploy, and iterate plug-ins to expose new or improve existing storage systems in Kubernetes without having to touch the core Kubernetes code and wait for its release cycles.
@@ -135,6 +137,18 @@ az aks update --name $CLUSTER --resource-group $RESOURCE_GROUP --enable-disk-dri
 kubectl get storageclass
 ```
 
+In addition to in-tree driver features, Azure Disk CSI driver supports the following features:
+
+- Performance improvements during concurrent disk attach and detach
+- In-tree drivers attach or detach disks in serial, while CSI drivers attach or detach disks in batch. There's significant improvement when there are multiple disks attaching to one node.
+- Premium SSD v1 and v2 are supported.
+  - PremiumV2_LRS only supports None caching mode
+- Zone-redundant storage (ZRS) disk support
+  - Premium_ZRS, StandardSSD_ZRS disk types are supported. ZRS disk could be scheduled on the zone or non-zone node, without the restriction that disk volume should be co-located in the same zone as a given node. For more information, including which regions are supported, see Zone-redundant storage for managed disks.
+- Snapshot
+- Volume clone
+- Resize disk PV without downtime
+
 ### 3.2. Dynamically create Azure Disks PVs by using the built-in storage classes
 
 When you use the Azure Disk CSI driver on AKS, there are two more built-in StorageClasses that use the Azure Disk CSI storage driver. The other CSI storage classes are created with the cluster alongside the in-tree default storage classes.
@@ -163,8 +177,6 @@ To validate the disk is correctly mounted, run the following command and verify 
 kubectl exec nginx-azuredisk -- ls /mnt/azuredisk
 ```
 
-
-
 ### 3.2. Expand Volume without downtime
 
 You can request a larger volume for a PVC. Edit the PVC object, and specify a larger size. This change triggers the expansion of the underlying volume that backs the PV.
@@ -181,6 +193,8 @@ The output of the command resembles the following example:
 Filesystem      Size  Used Avail Use% Mounted on
 /dev/sdc        9.8G   42M  9.8G   1% /mnt/azuredisk
 ```
+
+Now we will expand the PVC by increasing the **spec.resources.requests.storage** field running the following command:
 
 ```powershell	
 kubectl patch pvc pvc-azuredisk --type merge --patch '{"spec": {"resources": {"requests": {"storage": "15Gi"}}}}'
@@ -226,7 +240,98 @@ Filesystem      Size  Used Avail Use% Mounted on
 /dev/sdc         15G   46M   15G   1% /mnt/azuredisk
 ```
 
-## 4. Lab 2: Provision/enable Azure Elastic SAN in an existing AKS Cluster and Stress Testing
+## 4. Lab 2: Provision/enable Azure Elastic SAN in an existing AKS Cluster using iSCSI CSI driver
+
+This Lab explains how to connect an Azure Elastic storage area network (SAN) volume from an Azure Kubernetes Service (AKS) cluster. To make this connection, enable the Kubernetes iSCSI CSI driver on your cluster. With this driver, you can access volumes on your Elastic SAN by creating persistent volumes on your AKS cluster, and then attaching the Elastic SAN volumes to the persistent volumes.
+
+### 4.1. About the iSCSI CSI driver
+The iSCSI CSI driver is an open source project that allows you to connect to a Kubernetes cluster over iSCSI. Since the driver is an open source project, Microsoft won't provide support from any issues stemming from the driver, itself.
+
+The Kubernetes iSCSI CSI driver is available on GitHub:
+
+- [Kubernetes iSCSI CSI driver repository](https://github.com/kubernetes-csi/csi-driver-iscsi)
+- [Readme](https://github.com/kubernetes-csi/csi-driver-iscsi/blob/master/README.md)
+- [Report iSCSI driver issues](https://github.com/kubernetes-csi/csi-driver-iscsi/issues)
+
+### 4.2. Deploy an Elastic SAN volume
+
+The following command creates an Elastic SAN that uses zone-redundant storage.
+
+```powershell	
+az elastic-san create -n $EsanName -g $RESOURCE_GROUP -l $LOCATION --base-size-tib 50 --extended-capacity-size-tib 20 --sku "{name:Premium_ZRS,tier:Premium}"
+```
+
+Now that you've configured the basic settings and provisioned your storage, you can create volume groups. Volume groups are a tool for managing volumes at scale. Any settings or configurations applied to a volume group apply to all volumes associated with that volume group.
+
+```powershell
+az elastic-san volume-group create --elastic-san-name $EsanName -g $RESOURCE_GROUP -n $EsanVgName
+```
+
+Now that you've configured the SAN itself, and created at least one volume group, you can create volumes.
+
+Volumes are usable partitions of the SAN's total capacity, you must allocate a portion of that total capacity as a volume in order to use it. Only the actual volumes themselves can be mounted and used, not volume groups.
+
+
+```powershell
+az elastic-san volume create --elastic-san-name $EsanName -g $RESOURCE_GROUP -v $EsanVgName -n $VolumeName --size-gib 2000
+```
+
+### 4.3. Using Kubernetes iSCSI CSI driver with Azure Elastic SAN
+
+Before we start check to see that the driver isn't installed and then run the following script to install the driver.
+
+```powershell	
+kubectl -n kube-system get pod -o wide -l app=csi-iscsi-node
+```
+
+```powershell	
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\install-driver.ps1
+```
+After deployment, check the pods status again to verify that the driver installed.
+
+```powershell	
+kubectl -n kube-system get pod -o wide -l app=csi-iscsi-node
+```
+
+Now lets get all the information needed to connect the Elastic SAN volume that was created previously to the AKS cluster.
+
+```powershell	
+az elastic-san volume show -g $RESOURCE_GROUP -e $EsanName -v $EsanVgName -n $VolumeName
+```
+
+from the output extract the following information:
+- **targetPortalHostname**
+- **targetPortalPort**
+- **targetIqn**
+
+Now you will need to make a copy of the esan-pv.yaml file and replace the placeholders with the information you got from the previous command.
+
+After creating the pv.yml file, create a persistent volume with the following command:
+
+```powershell	
+kubectl apply -f pathtoyourfile/esan-pv.yaml
+```
+
+Next, create a persistent volume claim. Use the storage class we defined earlier with the persistent volume we defined. Simply run the following command:
+
+```powershell
+kubectl apply -f esan-pvc.yaml
+```
+
+To verify your PersistentVolumeClaim is created and bound to the PersistentVolume, run the following command:
+
+```powershell
+kubectl get pvc iscsiplugin-pvc
+```
+
+Finally lets create a pod manifest that uses this volume.
+
+```powershell
+kubectl create ns aksesan
+kubectl apply -f esan-pod.yaml
+kubectl apply -f esan-pod-service.yaml
+```
 
 ## 5. Lab 3: Provision/enable Azure Container Storage in an AKS Cluster and Stress Testing
 
@@ -234,7 +339,7 @@ Filesystem      Size  Used Avail Use% Mounted on
 
 ## 7. Lab 5: Provision/enable NetApp Files NFS volumes, SMB volumes and dual-protocol volumes
 
-## 8. Lab 6: Provision/enable NVMe PV in AKS Nodepool and do some stress testing
+## 8. Lab 6: Provision/enable NVMe PV in AKS Nodepool
 
 ## 9. Lab 7: Configure Backup on a cluster and how to use Resource Modification to patch backed-up
 

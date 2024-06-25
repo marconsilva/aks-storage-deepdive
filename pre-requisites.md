@@ -2,11 +2,14 @@
 
 ```powershell
 # create the lab variables
-$SUBSCRIPTION_ID=""
+$SUBSCRIPTION_ID="" # Replace with your subscription id
 $RESOURCE_GROUP="aksstoragelab"
 $CLUSTER="aksstoragelab"
 $LOCATION="westeurope"
 $VAULT_NAME="aksstoragelabkv"
+$EsanName   = "aksstoragelabsan"
+$EsanVgName = "aksstoragelabsanvg"
+$VolumeName = "aksstoragelabsanvol"
 ```
 
 ```powershell
@@ -42,4 +45,5 @@ az provider register --namespace Microsoft.ContainerService
 az extension add --upgrade --name k8s-extension
 az provider register --namespace Microsoft.ContainerService --wait 
 az provider register --namespace Microsoft.KubernetesConfiguration --wait
+az extension add --name elastic-san --allow-preview true
 ```
