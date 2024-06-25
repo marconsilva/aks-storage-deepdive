@@ -26,6 +26,19 @@ az provider register --namespace Microsoft.KubernetesConfiguration
 az feature register --namespace "Microsoft.ContainerService" --name "TrustedAccessPreview"
 ```
 
+Add the Variables
+
+```bash
+VAULT_NAME="backup-vault"
+VAULT_RG="rg-backup-vault"
+SA_NAME="storage4aks1backupdemo"
+SA_RG="rg-backup-storage"
+BLOB_CONTAINER_NAME="aks-backup"
+SUBSCRIPTION_ID=$(az account list --query [?isDefault].id -o tsv)
+AKS_RG_01=""
+AKS_01=""
+```
+
 ## Step 1: Setup Backup Infrastructure
 
 ### Create a Resource Group for Backup Vault
