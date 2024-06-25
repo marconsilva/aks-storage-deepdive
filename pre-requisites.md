@@ -10,6 +10,16 @@ $VAULT_NAME="aksstoragelabkv"
 $EsanName   = "aksstoragelabsan"
 $EsanVgName = "aksstoragelabsanvg"
 $VolumeName = "aksstoragelabsanvol"
+
+$CLUSTER_1="aksstoragelab-1"
+$RESOURCE_GROUP_1="aksstoragelab-1"
+$CLUSTER_2="aksstoragelab-2"
+$RESOURCE_GROUP_2="aksstoragelab-2"
+$BACK_VAULT_NAME="backup-vault"
+$RESOURCE_GROUP_VAULT="rg-backup-vault"
+$SA_NAME="storagelabaks1backup13"
+$SA_RG="rg-backup-storage"
+$BLOB_CONTAINER_NAME="aks-backup"
 ```
 
 ```powershell
@@ -41,9 +51,8 @@ az extension update --name aks-preview
 az provider register --namespace Microsoft.Network
 az provider register --namespace Microsoft.NetworkFunction
 az provider register --namespace Microsoft.ServiceNetworking
-az provider register --namespace Microsoft.ContainerService
+az provider register --namespace Microsoft.ContainerService --name "TrustedAccessPreview"
 az extension add --upgrade --name k8s-extension
-az provider register --namespace Microsoft.ContainerService --wait 
-az provider register --namespace Microsoft.KubernetesConfiguration --wait
+az provider register --namespace Microsoft.KubernetesConfiguration  --wait
 az extension add --name elastic-san --allow-preview true
 ```
