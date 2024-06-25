@@ -5,229 +5,280 @@ Azure Kubernetes Service (AKS) backup is a simple, cloud-native process you can 
 
 Use AKS backup to back up your AKS workloads and persistent volumes that are deployed in AKS clusters. The solution requires the Backup extension to be installed inside the AKS cluster. The Backup vault communicates to the extension to complete operations that are related to backup and restore. Using the Backup extension is mandatory, and the extension must be installed inside the AKS cluster to enable backup and restore for the cluster. When you configure AKS backup, you add values for a storage account and a blob container where backups are stored.
 
-Lets start by creating a new resource group and a new backup vault to store the backups.
+# Backup and Restore AKS using Azure CLI
 
-```powershell
-az group create --name $RESOURCE_GROUP_VAULT --location $LOCATION
+This document outlines the steps to backup and restore Azure Kubernetes Service (AKS) clusters using Azure CLI commands.
 
-az dataprotection backup-vault create `
-   --vault-name $BACK_VAULT_NAME `
-   -g $RESOURCE_GROUP_VAULT `
-   --storage-setting "[{type:'LocallyRedundant',datastore-type:'VaultStore'}]"
+## Prerequisites
+
+Before you begin, ensure you have the following:
+
+- An Azure subscription
+- Azure CLI installed
+- Permissions to register resource providers and create resources in your Azure subscription
+
+## Register Azure Providers
+
+Register the necessary Azure providers for Kubernetes configuration and container service.
+
+```bash
+az provider register --namespace Microsoft.KubernetesConfiguration
+az feature register --namespace "Microsoft.ContainerService" --name "TrustedAccessPreview"
 ```
 
-Lets create the blob storage account and the container to store the backups.
+## Step 1: Setup Backup Infrastructure
 
-```powershell
+### Create a Resource Group for Backup Vault
+```bash
+az group create --name $VAULT_RG --location westeurope
+```
+
+### Create the Backup vault
+```bash
+az dataprotection backup-vault create --vault-name $VAULT_NAME -g $VAULT_RG --storage-setting "[{type:'LocallyRedundant',datastore-type:'VaultStore'}]"
+```
+
+### Create a Backup Policy
+
+```bash
+az dataprotection backup-policy get-default-policy-template --datasource-type AzureKubernetesService > akspolicy.json
+az dataprotection backup-policy create -g $VAULT_RG --vault-name $VAULT_NAME -n aksmbckpolicy --policy akspolicy.json
+```
+   
+2. Create storage account and Blob container for storing Backup data
+
+```bash
 az group create --name $SA_RG --location westeurope
 
-az storage account create `
-   --name $SA_NAME `
-   --resource-group $SA_RG `
-   --sku Standard_LRS
+az storage account create --name $SA_NAME --resource-group $SA_RG --sku Standard_LRS
 
-$ACCOUNT_KEY=$(az storage account keys list --account-name $SA_NAME -g $SA_RG --query "[0].value" -o tsv)
-
-az storage container create `
-   --name $BLOB_CONTAINER_NAME `
-   --account-name $SA_NAME `
-   --account-key $ACCOUNT_KEY
+az storage container create --name $BLOB_CONTAINER_NAME --account-name $SA_NAME --auth-mode login
 ```
 
-Now lets create first AKS cluster with CSI Disk Driver and Snapshot Controller
+3. Update the AKS Cluster to install the Backup extension
 
-```powershell
-az aks get-versions -l westeurope -o table
-
-az group create --name $RESOURCE_GROUP_1 --location westeurope
-
-az aks create -g $RESOURCE_GROUP_1 -n $CLUSTER_1 -k "1.27.3" --zones 1 2 3 --node-vm-size "Standard_B2als_v2"
+```bash
+az aks update -g $AKS_RG_01 -n $AKS_01 --enable-disk-driver --enable-snapshot-controller
 ```
 
-We just need now to verify that CSI Disk Driver and Snapshot Controller are installed
+4. Install the Backup extension in first AKS cluster
 
-```powershell
-az aks show -g $RESOURCE_GROUP_1 -n $CLUSTER_1 --query storageProfile
-```
+```bash
+az extension add --name k8s-extension
 
-If not installed, you can install them using the following command
+az k8s-extension create --name azure-aks-backup --extension-type Microsoft.DataProtection.Kubernetes --scope cluster --cluster-type managedClusters --cluster-name $AKS_01 --resource-group $AKS_RG_01 --release-train stable --configuration-settings blobContainer=$BLOB_CONTAINER_NAME storageAccount=$SA_NAME storageAccountResourceGroup=$SA_RG storageAccountSubscriptionId=$SUBSCRIPTION_ID
 
-```powershell
-az aks update -g $RESOURCE_GROUP_1 -n $CLUSTER_1 --enable-disk-driver --enable-snapshot-controller
-```
-
-Lets now create a second AKS cluster with CSI Disk Driver and Snapshot Controller and verify that they are installed
-
-```powershell
-az group create --name $RESOURCE_GROUP_2 --location westeurope
-
-az aks create -g $RESOURCE_GROUP_2 -n $CLUSTER_2 -k "1.27.3" --zones 1 2 3 --node-vm-size "Standard_B2als_v2"
-
-# Verify that CSI Disk Driver and Snapshot Controller are installed
-
-az aks show -g $RESOURCE_GROUP_2 -n $CLUSTER_2 --query storageProfile
-```
-
-If not installed, you ca install it with this command:
-
-```powershell
-az aks update -g $RESOURCE_GROUP_2 -n $CLUSTER_2 --enable-disk-driver --enable-snapshot-controller
-```
-
-We can now prepare the backup extension and install it in the first AKS cluster
-
-```powershell
-az k8s-extension create --name azure-aks-backup `
-   --extension-type Microsoft.DataProtection.Kubernetes `
-   --scope cluster `
-   --cluster-type managedClusters `
-   --cluster-name $CLUSTER_1 `
-   --resource-group $RESOURCE_GROUP_1 `
-   --release-train stable `
-   --configuration-settings `
-   blobContainer=$BLOB_CONTAINER_NAME `
-   storageAccount=$SA_NAME `
-   storageAccountResourceGroup=$SA_RG `
-   storageAccountSubscriptionId=$SUBSCRIPTION_ID
 
 # View Backup Extension installation status
 
-az k8s-extension show --name azure-aks-backup --cluster-type managedClusters --cluster-name $CLUSTER_1 -g $RESOURCE_GROUP
+az k8s-extension show --name azure-aks-backup --cluster-type managedClusters --cluster-name $AKS_01 -g $AKS_RG_01
 ```
 
-We now need to Enable Trusted Access in AKS cluster to allow the backup extension to access the storage account
+We can see that is using Velero
 
-```powershell
-$BACKUP_VAULT_ID=$(az dataprotection backup-vault show --vault-name $BACK_VAULT_NAME -g $RESOURCE_GROUP_VAULT --query id -o tsv)
+```bash
+kubectl describe pod -n dataprotection-microsoft | grep -i image:
+````
 
-az aks trustedaccess rolebinding create –n trustedaccess `
-   -g $RESOURCE_GROUP_1 `
-   --cluster-name $CLUSTER_1 `
-   --source-resource-id $BACKUP_VAULT_ID `
-   --roles Microsoft.DataProtection/backupVaults/backup-operator
+5. As part of extension installation, a user identity is created in the AKS cluster's Node Pool Resource Group. For the extension to access the storage account, you need to provide this identity the Storage Blob Data Contributor role. To assign the required role, run the following command:
 
-az aks trustedaccess rolebinding list -g $RESOURCE_GROUP_1 --cluster-name $CLUSTER
+```bash
+az role assignment create --assignee-object-id $(az k8s-extension show --name azure-aks-backup --cluster-name $AKS_01 --resource-group $AKS_RG_01 --cluster-type managedClusters --query aksAssignedIdentity.principalId --output tsv) --role 'Storage Blob Data Contributor' --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$SA_RG/providers/Microsoft.Storage/storageAccounts/$SA_NAME
 ```
 
-We need to do the same for the second AKS cluster
+6. Enable Trusted Access in AKS
 
-```powershell
+```bash
+BACKUP_VAULT_ID=$(az dataprotection backup-vault show --vault-name $VAULT_NAME -g $VAULT_RG --query id -o tsv)
 
-az k8s-extension create --name azure-aks-backup `
-   --extension-type Microsoft.DataProtection.Kubernetes `
-   --scope cluster `
-   --cluster-type managedClusters `
-   --cluster-name $CLUSTER_2 `
-   --resource-group $RESOURCE_GROUP_2 `
-   --release-train stable `
-   --configuration-settings `
-   blobContainer=$BLOB_CONTAINER_NAME `
-   storageAccount=$SA_NAME `
-   storageAccountResourceGroup=$SA_RG `
-   storageAccountSubscriptionId=$SUBSCRIPTION_ID
+az aks trustedaccess rolebinding create -g $AKS_RG_01 --cluster-name $AKS_01 --name backuprolebinding --source-resource-id $BACKUP_VAULT_ID --roles Microsoft.DataProtection/backupVaults/backup-operator
 
-# View Backup Extension installation status
-
-az k8s-extension show --name azure-aks-backup --cluster-type managedClusters --cluster-name $CLUSTER_2 -g $RESOURCE_GROUP_2
-
-# Enable Trusted Access in AKS
-
-$BACKUP_VAULT_ID=$(az dataprotection backup-vault show --vault-name $BACK_VAULT_NAME -g $RESOURCE_GROUP_VAULT --query id -o tsv)
-
-az aks trustedaccess rolebinding create `
-   -g $RESOURCE_GROUP_2 `
-   --cluster-name $CLUSTER_2 `
-   –n trustedaccess `
-   -s $BACKUP_VAULT_ID `
-   --roles Microsoft.DataProtection/backupVaults/backup-operator
+az aks trustedaccess rolebinding list -g $AKS_RG_01 --cluster-name $AKS_01
 ```
 
-We can now create the backup policy and backup instance
+## Configure the Backup and Create a Backup Instance
 
-```powershell
-az dataprotection backup-instance create -g MyResourceGroup --vault-name MyVault --backup-instance backupinstance.json
+1. Initialize the backup configuration
 
-az backup container register --resource-group $RESOURCE_GROUP_1 --vault-name $BACK_VAULT_NAME --subscription $SUBSCRIPTION_ID --backup-management-type AzureKubernetesService --workload-type AzureKubernetesService --query properties.friendlyName -o tsv
+```bash
+az dataprotection backup-instance initialize-backupconfig --datasource-type AzureKubernetesService > aksbackupconfig.json
 
-$CONTAINER_NAME=$(az backup container list --resource-group $RESOURCE_GROUP_1 --vault-name $BACK_VAULT_NAME --subscription $SUBSCRIPTION_ID --backup-management-type AzureKubernetesService --query "[0].name" -o tsv)
+# If you want to add only backup to specific namespace or resource change the generated config.json
+# {
+#  "excluded_namespaces": null,
+#  "excluded_resource_types": null,
+#  "include_cluster_scope_resources": true,
+#  "included_namespaces": null, 
+#  "included_resource_types": null,
+#  "label_selectors": null,
+#  "snapshot_volumes": true
+# }
 
-az backup item set-policy --resource-group $RESOURCE_GROUP_1 --vault-name $BACK_VAULT_NAME --subscription $SUBSCRIPTION_ID --container-name $CONTAINER_NAME --item-name $CONTAINER_NAME --policy-name "aks-backup-policy"
 ```
 
-Finally we can create a backup job for each cluster
+2. Initialize the backup-instance
 
-```powershell
-az backup job start --resource-group $RESOURCE_GROUP_1 --vault-name $BACK_VAULT_NAME --subscription $SUBSCRIPTION_ID --container-name $CONTAINER_NAME --item-name $CONTAINER_NAME --backup-management-type AzureKubernetesService --workload-type AzureKubernetesService --operation TriggerBackup
+```bash
+az dataprotection backup-instance initialize --datasource-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$AKS_RG_01/providers/Microsoft.ContainerService/managedClusters/$AKS_01 --datasource-location westeurope --datasource-type AzureKubernetesService --policy-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/backupVaults/$VAULT_NAME/backupPolicies/aksmbckpolicy --backup-configuration ./aksbackupconfig.json --friendly-name ecommercebackup --snapshot-resource-group-name $AKS_RG_01 > backupinstance.json
 
-az backup job start --resource-group $RESOURCE_GROUP_2 --vault-name $BACK_VAULT_NAME --subscription $SUBSCRIPTION_ID --container-name $CONTAINER_NAME --item-name $CONTAINER_NAME --backup-management-type AzureKubernetesService --workload-type AzureKubernetesService --operation TriggerBackup
+
+# validate the backup instance
+az dataprotection backup-instance validate-for-backup --backup-instance ./backupinstance.json --ids /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/backupVaults/$VAULT_NAME
+```	
+
+If the validation fails and there are certain permissions missing, then you can assign them by running the following command:
+
+```bash
+az dataprotection backup-instance update-msi-permissions --datasource-type AzureKubernetesService --operation Backup --permissions-scope ResourceGroup --vault-name $VAULT_NAME --resource-group $VAULT_RG --backup-instance backupinstance.json
 ```
 
-Now lets check the status of the backup jobs
+3. Create the Backup Instance
 
-```powershell
-az aks get-credentials -n $CLUSTER_1 -g $RESOURCE_GROUP_1 --overwrite-existing
-kubectl get pods -n dataprotection-microsoft
+```bash
+az dataprotection backup-instance create --backup-instance  backupinstance.json --resource-group $VAULT_RG --vault-name $VAULT_NAME
 ```
 
-You should see something like this
+## Run an on-demand backup
 
-```output
-# NAME                                                         READY   STATUS    RESTARTS      AGE
-# dataprotection-microsoft-controller-7b8977698c-v2rl7         2/2     Running   0             94m
-# dataprotection-microsoft-geneva-service-6c8457bbd-jgw49      2/2     Running   0             94m
-# dataprotection-microsoft-kubernetes-agent-5558dbbf8f-5tdkc   2/2     Running   2 (94m ago)   94m
+1. To fetch the relevant backup instance on which you want to trigger a backup, run the az dataprotection backup-instance list-from-resourcegraph -- command
+
+```bash
+az dataprotection backup-instance list-from-resourcegraph --datasource-type AzureKubernetesService --datasource-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$AKS_RG_01/providers/Microsoft.ContainerService/managedClusters/$AKS_01 
 ```
 
+2. Fetch the rule name of the policy for the next command
 
-```powershell
-kubectl get nodes
+```bash
+az dataprotection backup-policy show -g $VAULT_RG --vault-name $VAULT_NAME -n "aksmbckpolicy"
+
+# Now, trigger an on-demand backup for the backup instance by running the following command (backuninstanceid from previous command):
+az dataprotection backup-instance adhoc-backup --rule-name "BackupHourly" --ids /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/backupVaults/$VAULT_NAME/backupInstances/$BACKUP_INTANCE_ID
 ```
 
-```output
-# NAME                                 STATUS   ROLES   AGE   VERSION
-# aks-systempool-20780455-vmss000000   Ready    agent   28m   v1.25.5
-# aks-systempool-20780455-vmss000001   Ready    agent   28m   v1.25.5
-# aks-systempool-20780455-vmss000002   Ready    agent   28m   v1.25.5
+3. Tracking the jobs 
+
+```bash
+#For on-demand backup:
+az dataprotection job list-from-resourcegraph --datasource-type AzureKubernetesService --datasource-id /subscriptions/fef74fbe-24ca-4d9a-ba8e-30a17e95608b/resourceGroups/ChaosStudio/providers/Microsoft.ContainerService/managedClusters/$AKS_01 --operation OnDemandBackup
+
+# For scheduled backup:
+az dataprotection job list-from-resourcegraph --datasource-type AzureKubernetesService --datasource-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$AKS_RG_01/providers/Microsoft.ContainerService/managedClusters/$AKS_01 --operation ScheduledBackup
+```
+We can check the backup also stored on the storage account and on the backup vault
+
+
+# Restore
+
+For restore, we need to have the backup instance id and the recovery point id. Let's remove some namespaces and restore the original state of the system. We could ad a different cluster to restore to that new cluster my previously backup. But for this scenario let's create some disruptions on current cluster and then restore to original state.
+
+```bash
+kubectl delete ns kube-system
+kubectl delete ns my-namespace2
 ```
 
-```powershell
-kubectl apply -f deploy_disk_lrs.yaml
+1. First, check if Backup Extension is installed in the cluster by running the following command:
+
+```bash
+az k8s-extension show --name azure-aks-backup --cluster-type managedClusters --cluster-name $AKS_01 --resource-group $AKS_RG_01
 ```
 
-```powershell
-kubectl apply -f deploy_disk_zrs_sc.yaml
+2. If the extension is installed, then check if it has the right permissions on the storage account where backups are stored:
+
+```bash
+az role assignment list --all --assignee  $(az k8s-extension show --name azure-aks-backup --cluster-name $AKS_01 --resource-group $AKS_RG_01 --cluster-type managedClusters --query aksAssignedIdentity.principalId --output tsv)
 ```
 
-```powershell
-kubectl get pods,svc,pv,pvc
-```
-```output
-# NAME                             READY   STATUS    RESTARTS   AGE
-# pod/nginx-lrs-7db4886f8c-x4hzz   1/1     Running   0          90s
-# pod/nginx-zrs-5567fd9ddc-hbtfs   1/1     Running   0          80s
+3. If the role isn't assigned, then you can assign the role by running the following command:
 
-# NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
-# service/kubernetes   ClusterIP   10.0.0.1     <none>        443/TCP   30m
-
-# NAME                                                        CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                            STORAGECLASS      REASON   AGE
-# persistentvolume/pvc-c3fc20ea-2922-477c-a337-895b8b503a9b   5Gi        RWO            Delete           Bound    default/azure-managed-disk-lrs   managed-csi                86s
-# persistentvolume/pvc-f1055e1c-b8e1-4604-8567-1f288daced02   5Gi        RWO            Delete           Bound    default/azure-managed-disk-zrs   managed-csi-zrs            76s
-
-# NAME                                           STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS      AGE
-# persistentvolumeclaim/azure-managed-disk-lrs   Bound    pvc-c3fc20ea-2922-477c-a337-895b8b503a9b   5Gi        RWO            managed-csi       90s
-# persistentvolumeclaim/azure-managed-disk-zrs   Bound    pvc-f1055e1c-b8e1-4604-8567-1f288daced02   5Gi        RWO            managed-csi-zrs   80s
+```bash
+az role assignment create --assignee-object-id $(az k8s-extension show --name azure-aks-backup --cluster-name $AKS_01 --resource-group $AKS_RG_01 --cluster-type managedClusters --query aksAssignedIdentity.principalId --output tsv) --role 'Storage Account Contributor'  --scope /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$SA_RG/providers/Microsoft.Storage/storageAccounts/$SA_NAME
 ```
 
-```powrshell
-kubectl exec nginx-lrs-7db4886f8c-x4hzz -it -- cat /mnt/azuredisk/outfile
-# Tue Mar 21 15:00:14 UTC 2023
-# Tue Mar 21 15:01:14 UTC 2023
-# Tue Mar 21 15:02:14 UTC 2023
-# Tue Mar 21 15:03:14 UTC 2023
+4. Check Trusted Access is enabled between the Backup vault and Target AKS cluster
 
-kubectl exec nginx-zrs-5567fd9ddc-hbtfs -it -- cat /mnt/azuredisk/outfile
-# Tue Mar 21 15:00:48 UTC 2023
-# Tue Mar 21 15:01:48 UTC 2023
-# Tue Mar 21 15:02:48 UTC 2023
-# Tue Mar 21 15:03:48 UTC 2023
+```bash
+az aks trustedaccess rolebinding list --resource-group $AKS_RG_01 --cluster-name $AKS_01
+```	
+
+If it's not enabled, then run the following command to enable Trusted Access:
+
+```bash	
+az aks trustedaccess rolebinding create --cluster-name $AKS_01 --name backuprolebinding --resource-group $AKS_RG_01 --roles Microsoft.DataProtection/backupVaults/backup-operator --source-resource-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/BackupVaults/$VAULT_NAME
 ```
+
+## Restore to an AKS cluster
+
+5. Fetch all instances associated with the AKS cluster and identify the relevant instance.
+
+```bash
+az dataprotection backup-instance list-from-resourcegraph --datasource-type AzureKubernetesService --datasource-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$AKS_RG_01/providers/Microsoft.ContainerService/managedClusters/$AKS_01 
+```
+
+Once the instance is identified, fetch the relevant recovery point (retrieve the BACKUP_INSTANCE_NAME from the previous command).
+
+```bash
+az dataprotection recovery-point list --backup-instance-name $BACKUP_INSTANCE_NAME --resource-group $VAULT_RG --vault-name $VAULT_NAME
+```
+
+## Prepare the restore request
+
+6. To prepare the restore configuration defining the items to be restored to the target AKS cluster, run the az dataprotection backup-instance initialize-restoreconfig command.
+
+```bash
+az dataprotection backup-instance initialize-restoreconfig --datasource-type AzureKubernetesService >restoreconfig.json
+```
+
+Now, prepare the restore request with all relevant details. If you're restoring the backup to the original cluster, then run the following command (choose a specific RECOVERY_POINT_ID from the previous command, and also chose a REGION for the restore location):
+
+```bash
+az dataprotection backup-instance restore initialize-for-item-recovery --datasource-type AzureKubernetesService --restore-location "westeurope" --source-datastore OperationalStore --recovery-point-id 293cabd7dedb45e9aa01a40ed74acb1d --restore-configuration restoreconfig.json --backup-instance-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/backupVaults/$VAULT_NAME/backupInstances/BACKUP_INSTANCE_NAME >restorerequestobject.json
+```
+
+7. Now, you can update the JSON object as per your requirements, and then validate the object by running the following command:
+
+```bash
+az dataprotection backup-instance validate-for-restore --backup-instance-name $BACKUP_INSTANCE_NAME --resource-group $VAULT_RG --restore-request-object restorerequestobject.json --vault-name $VAULT_NAME
+
+```
+
+If everything is working correctly we will see an output like
+
+```bash
+{
+    "objectType": "OperationJobExtendedInfo"
+}
+```	
+
+8. The previous command checks if the AKS Cluster and Backup vault have required permissions on each other and the Snapshot resource group to perform restore. If the validation fails due to missing permissions, you can assign them by running the following command:
+
+```bash
+az dataprotection backup-instance update-msi-permissions --datasource-type AzureKubernetesService --operation Restore --permissions-scope Resource --resource-group  $VAULT_RG --vault-name $VAULT_NAME --restore-request-object restorerequestobject.json --snapshot-resource-group-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$AKS_RG_01
+```
+
+## Trigger the restore
+
+9. Once the validation is successful, you can trigger the restore by running the following command:
+
+```bash
+az dataprotection backup-instance restore trigger --restore-request-object restorerequestobject.json --ids /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/backupVaults/$VAULT_NAME/backupInstances/$BACKUP_INSTANCE_NAME --name $BACKUP_INSTANCE_NAME
+```
+
+10. Tracking job
+
+```bash
+az dataprotection job list-from-resourcegraph --datasource-type AzureKubernetesService --datasource-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$AKS_RG_01/providers/Microsoft.ContainerService/managedClusters/$AKS_01 --operation Restore
+```
+
+You can now check on the AKS cluster if the namespaces are restored and under the AKS backup portal the progress of the restore job.
+
+## Clean up
+
+```bash
+az group delete --name $VAULT_RG --yes
+az group delete --name $SA_RG --yes
+```
+
+## References
+
+- [Azure Kubernetes Service (AKS) backup and restore](https://docs.microsoft.com/en-us/azure/aks/backup-restore)
+- [Azure Kubernetes Service (AKS) backup and restore using Azure CLI](https://docs.microsoft.com/en-us/azure/aks/backup-restore-cli)
