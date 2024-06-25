@@ -56,47 +56,14 @@ az account set --subscription $SUBSCRIPTION_ID
 az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER --overwrite-existing
 ```
 
-### 2.2.3. Deploy an Application
-
-The application used in the next steps is the AKS Store Demo application, that can be found on the below repo. 
-
-This sample demo app consists of a group of containerized microservices that can be easily deployed into an Azure Kubernetes Service (AKS) cluster. This is meant to show a realistic scenario using a polyglot architecture, event-driven design, and common open source back-end services (eg - RabbitMQ, MongoDB). The application also leverages OpenAI's GPT-3 models to generate product descriptions. This can be done using either [Azure OpenAI](https://learn.microsoft.com/azure/ai-services/openai/overview) or [OpenAI](https://openai.com/). We will not be using the OpenAI part of the application in this Lab.
-
-This application is inspired by another demo app called [Red Dog](https://github.com/Azure/reddog-code).
-
-> &#8505; **Note**
-> This is not meant to be an example of perfect code to be used in production, but more about showing a realistic application running in AKS. 
-
-
-**Github Repo:** [AKS Store Demo](https://github.com/Azure-Samples/aks-store-demo)
-
+### 2.2.3. Create a namespace for the Labs
 
 ```powershell
 # create the namespace where the demo app will be deployed
 kubectl create ns aksappga
 ```
 
-```powershell
-# deploy the app into the namespace
-kubectl apply -f https://raw.githubusercontent.com/Azure-Samples/aks-store-demo/main/aks-store-all-in-one.yaml -n aksappga
-```
-
-```powershell
-# expose the store-front service via unmanaged nginx ingress controller
-kubectl apply -f .\nginx-ingress.yaml
-```
-
-```powershell
-# get the public IP of the ingress controller
-kubectl get svc store-front -n aksappga -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
-```
-
-```powershell	
-# curl the store-front service
-curl http://<ingress-ip>
-```
-
-Congratulations! You have successfully deployed the AKS Store Demo application, and have a working cluster for running the AKS Storage Deep Dive Labs.
+Congratulations! You have successfully deployed a plain old AKS Cluster, and have a working cluster for running the AKS Storage Deep Dive Labs.
 
 
 

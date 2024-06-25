@@ -40,7 +40,7 @@ az keyvault create -n $VAULT_NAME -g $RESOURCE_GROUP -l $LOCATION
 
 ```powershell
 # create an AKS with Azure CNI Overlay Network Plugin
-az aks create -n $CLUSTER -g $RESOURCE_GROUP --location $LOCATION --network-plugin azure --network-plugin-mode overlay --pod-cidr 192.168.0.0/16 --generate-ssh-keys
+az aks create -n $CLUSTER -g $RESOURCE_GROUP --location $LOCATION --network-plugin azure --network-plugin-mode overlay --pod-cidr 192.168.0.0/16 --generate-ssh-keys --node-vm-size Standard_DS4_v5 --node-count 3
 ```
 
 
@@ -53,6 +53,8 @@ az provider register --namespace Microsoft.NetworkFunction
 az provider register --namespace Microsoft.ServiceNetworking
 az provider register --namespace Microsoft.ContainerService --name "TrustedAccessPreview"
 az extension add --upgrade --name k8s-extension
-az provider register --namespace Microsoft.KubernetesConfiguration  --wait
+az provider register --namespace Microsoft.Kubernetes
+az provider register --namespace Microsoft.KubernetesConfiguration
+az provider register --namespace Microsoft.ExtendedLocation
 az extension add --name elastic-san --allow-preview true
 ```
