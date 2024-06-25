@@ -101,3 +101,56 @@ kubectl exec -it fiopod -- fio --name=benchtest --size=800m --filename=/volume/t
 ```
 
 ### 3. Use Azure Container Storage Preview with Azure Elastic SAN
+This Lab will now shows you how to configure Azure Container Storage to use Azure Elastic SAN as back-end storage for your Kubernetes workloads. At the end, you'll have a pod that's using Elastic SAN as its storage.
+
+First, create a storage pool, which is a logical grouping of storage for your Kubernetes cluster, run this to create a storage pool:
+
+```powershell
+kubectl apply -f acstor-storagepool-elastic-san.yaml
+```
+
+You can also run this command to check the status of the storage pool
+
+```powershell
+kubectl describe sp managed -n acstor
+```
+
+When the storage pool is created, Azure Container Storage will create a storage class on your behalf using the naming convention acstor-<storage-pool-name>. **It will also create an Azure Elastic SAN resource**.
+
+You can also check the created StorageClass by running this command and you should find the **acstor-managed** SC with the provider **san.csi.azure.com**:
+
+```powershell
+kubectl get sc 
+```
+
+### 3.1 Create a persistent volume claim
+Now we can create a persistent volume claim (PVC) to use the storage class.
+
+```powershell
+kubectl apply -f acstor-pvc-elastic-san.yaml
+```
+
+You can verify the status of the PVC by running the following command:
+
+```powershell	
+kubectl describe pvc managedpvc
+```
+Once the PVC is created, it's ready for use by a pod.
+Lets do the same as we did with the Azure managed disks, create a pod using Fio (Flexible I/O Tester) for benchmarking and workload simulation, and specify a mount path for the persistent volume.
+
+```powershell
+kubectl apply -f acstor-pod-elastic-san.yaml
+```
+
+Check that the pod is running and that the persistent volume claim has been bound successfully to the pod:
+
+```powershell
+kubectl describe pod fiopod
+kubectl describe pvc managedpvc
+```
+
+Now lets make some load on the storage again and see how it behaves.
+
+```powershell
+kubectl exec -it fiopod -- fio --name=benchtest --size=800m --filename=/volume/test --direct=1 --rw=randrw --ioengine=libaio --bs=4k --iodepth=16 --numjobs=8 --time_based --runtime=60
+```
