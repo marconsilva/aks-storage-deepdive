@@ -58,6 +58,10 @@ az keyvault create -n $VAULT_NAME -g $RESOURCE_GROUP -l $LOCATION
 az aks create -n $CLUSTER -g $RESOURCE_GROUP --location $LOCATION --network-plugin azure --network-plugin-mode overlay --pod-cidr 192.168.0.0/16 --generate-ssh-keys --node-vm-size Standard_DS4_v2 --node-count 3
 ```
 
+```powershell
+# Get access credentials for a managed Kubernetes cluster
+az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER
+```
 
 ```powershell
 # enable extensions and providers
