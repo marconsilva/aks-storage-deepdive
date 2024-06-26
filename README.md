@@ -15,7 +15,6 @@ Repo with all the content needed for the AKS Storage Deep Dive session.
 7. [Lab 5: Provision/enable NetApp Files NFS volumes, SMB volumes and dual-protocol volumes](Labs/Lab5.md)
 8. [Lab 6: Provision/enable NVMe PV in AKS Nodepool](Labs/Lab6.md)
 9. [Lab 7: Configure Backup on a cluster and how to use Resource Modification to patch backed-up](Labs/Lab7.md)
-10. [Lab 8: Configure Velero using Azure Blob Storage on a cluster](Labs/Lab8.md)
 
 ## 1. Pre-Requirements
 - **Azure Subscription** - [Signup for a free account.](https://azure.microsoft.com/free/)
