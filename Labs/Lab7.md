@@ -185,8 +185,9 @@ We can check the backup also stored on the storage account and on the backup vau
 For restore, we need to have the backup instance id and the recovery point id. Let's remove some namespaces and restore the original state of the system. We could ad a different cluster to restore to that new cluster my previously backup. But for this scenario let's create some disruptions on current cluster and then restore to original state.
 
 ```bash
-kubectl delete ns kube-system
+kubectl delete ns my-namespace1
 kubectl delete ns my-namespace2
+kubectl delete my-resources (ns, deployments)
 ```
 
 1. First, check if Backup Extension is installed in the cluster by running the following command:
