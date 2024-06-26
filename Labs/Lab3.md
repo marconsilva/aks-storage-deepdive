@@ -27,6 +27,11 @@ Installation takes 10-15 minutes to complete. You can check if the installation 
 ```powershell
 az k8s-extension list --cluster-name $CLUSTER --resource-group $RESOURCE_GROUP --cluster-type managedClusters
 ```
+We need to add the **acstor.azure.com/io-engine:acstor** lable to the **nodepool1** nodepool, so the Azure Container Storage can use it as a storage pool.
+
+```powershell
+kubectl label node -n acstor --overwrite nodepool1 acstor.azure.com/io-engine=acstor
+```
 
 Congratulations, you've successfully installed Azure Container Storage. You now have new storage classes that you can use for your Kubernetes workloads.
 

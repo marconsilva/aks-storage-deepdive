@@ -72,6 +72,12 @@ After creating the pv.yml file, create a persistent volume with the following co
 kubectl apply -f pathtoyourfile/esan-pv.yaml
 ```
 
+now lets create a namespace **aksesan**
+    
+```powershell
+kubectl create ns aksesan
+```
+
 Next, create a persistent volume claim. Use the storage class we defined earlier with the persistent volume we defined. Simply run the following command:
 
 ```powershell
@@ -87,7 +93,6 @@ kubectl get pvc iscsiplugin-pvc
 Finally lets create a pod manifest that uses this volume.
 
 ```powershell
-kubectl create ns aksesan
 kubectl apply -f esan-pod.yaml
 kubectl apply -f esan-pod-service.yaml
 ```
