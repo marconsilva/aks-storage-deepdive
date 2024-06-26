@@ -11,6 +11,21 @@ $EsanName   = "aksstoragelabsan"
 $EsanVgName = "aksstoragelabsanvg"
 $VolumeName = "aksstoragelabsanvol"
 
+$ANF_ACCOUNT_NAME="aksstoragelabanf"
+$POOL_NAME="aksstoragelabpool1"
+$SIZE="10" # size in TiB
+$SERVICE_LEVEL="Premium" # valid values are Standard, Premium and Ultra
+$VNET_NAME="aksstoragelabvnet"
+$SUBNET_NAME="aksstoragelabANFSubnet"
+$ADDRESS_PREFIX="myprefix"
+
+
+$UNIQUE_FILE_PATH="aksstoragelabfilepath"
+$VOLUME_SIZE_GIB="myvolsize"
+$VOLUME_NAME="aksstoragelabvolname"
+$VNET_ID="vnetId"
+$SUBNET_ID="anfSubnetId"
+
 $CLUSTER_1="aksstoragelab-1"
 $RESOURCE_GROUP_1="aksstoragelab-1"
 $CLUSTER_2="aksstoragelab-2"
@@ -57,4 +72,5 @@ az provider register --namespace Microsoft.Kubernetes
 az provider register --namespace Microsoft.KubernetesConfiguration
 az provider register --namespace Microsoft.ExtendedLocation
 az extension add --name elastic-san --allow-preview true
+az provider register --namespace Microsoft.NetApp
 ```
