@@ -6,7 +6,7 @@ When your application needs sub-millisecond storage latency and doesn't require 
 
 There are two types of Ephemeral Disk available: NVMe and temp SSD. NVMe is designed for high-speed data transfer between storage and CPU. Choose NVMe when your application requires higher IOPS and throughput than temp SSD, or if your workload requires replication. Replication isn't currently supported for temp SSD.
 
-ih this lab we will be working with Temp SSD.
+In this lab we will be working with Temp SSD.
 
 ### 1. Choosing a VM Type that supports Temp SSD
 
