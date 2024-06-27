@@ -29,14 +29,14 @@ az feature register --namespace "Microsoft.ContainerService" --name "TrustedAcce
 Add the Variables
 
 ```bash
-VAULT_NAME="backup-vault"
-VAULT_RG="rg-backup-vault"
-SA_NAME="storage4aks1backupdemo"
-SA_RG="rg-backup-storage"
-BLOB_CONTAINER_NAME="aks-backup"
-SUBSCRIPTION_ID=$(az account list --query [?isDefault].id -o tsv)
-AKS_RG_01="aksstoragelab"
-AKS_01="aksstoragelab"
+$VAULT_NAME="backup-vault"
+$VAULT_RG="rg-backup-vault"
+$SA_NAME="storage4aks1backupdemoms"
+$SA_RG="rg-backup-storage"
+$BLOB_CONTAINER_NAME="aks-backup"
+$SUBSCRIPTION_ID=$(az account list --query [?isDefault].id -o tsv)
+$AKS_RG_01="aksstoragelab"
+$AKS_01="aksstoragelab"
 ```
 
 ## Step 1: Setup Backup Infrastructure
@@ -91,7 +91,7 @@ We can see that is using Velero
 
 ```bash
 kubectl describe pod -n dataprotection-microsoft | grep -i image:
-````
+```
 
 5. As part of extension installation, a user identity is created in the AKS cluster's Node Pool Resource Group. For the extension to access the storage account, you need to provide this identity the Storage Blob Data Contributor role. To assign the required role, run the following command:
 
@@ -102,7 +102,7 @@ az role assignment create --assignee-object-id $(az k8s-extension show --name az
 6. Enable Trusted Access in AKS
 
 ```bash
-BACKUP_VAULT_ID=$(az dataprotection backup-vault show --vault-name $VAULT_NAME -g $VAULT_RG --query id -o tsv)
+$BACKUP_VAULT_ID=$(az dataprotection backup-vault show --vault-name $VAULT_NAME -g $VAULT_RG --query id -o tsv)
 
 az aks trustedaccess rolebinding create -g $AKS_RG_01 --cluster-name $AKS_01 --name backuprolebinding --source-resource-id $BACKUP_VAULT_ID --roles Microsoft.DataProtection/backupVaults/backup-operator
 
@@ -159,13 +159,17 @@ az dataprotection backup-instance create --backup-instance  backupinstance.json 
 az dataprotection backup-instance list-from-resourcegraph --datasource-type AzureKubernetesService --datasource-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$AKS_RG_01/providers/Microsoft.ContainerService/managedClusters/$AKS_01 
 ```
 
+```bash
+BACKUP_INSTANCE_ID="aksstoragelab-aksstoragelab-aksstoragelab"
+```
+
 2. Fetch the rule name of the policy for the next command
 
 ```bash
 az dataprotection backup-policy show -g $VAULT_RG --vault-name $VAULT_NAME -n "aksmbckpolicy"
 
 # Now, trigger an on-demand backup for the backup instance by running the following command (backuninstanceid from previous command):
-az dataprotection backup-instance adhoc-backup --rule-name "BackupHourly" --ids /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/backupVaults/$VAULT_NAME/backupInstances/$BACKUP_INTANCE_ID
+az dataprotection backup-instance adhoc-backup --rule-name "BackupHourly" --ids /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/backupVaults/$VAULT_NAME/backupInstances/$BACKUP_INSTANCE_ID
 ```
 
 3. Tracking the jobs 
@@ -245,7 +249,7 @@ az dataprotection backup-instance initialize-restoreconfig --datasource-type Azu
 Now, prepare the restore request with all relevant details. If you're restoring the backup to the original cluster, then run the following command (choose a specific RECOVERY_POINT_ID from the previous command, and also chose a REGION for the restore location):
 
 ```bash
-az dataprotection backup-instance restore initialize-for-item-recovery --datasource-type AzureKubernetesService --restore-location "westeurope" --source-datastore OperationalStore --recovery-point-id 293cabd7dedb45e9aa01a40ed74acb1d --restore-configuration restoreconfig.json --backup-instance-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/backupVaults/$VAULT_NAME/backupInstances/BACKUP_INSTANCE_NAME >restorerequestobject.json
+az dataprotection backup-instance restore initialize-for-item-recovery --datasource-type AzureKubernetesService --restore-location "westeurope" --source-datastore OperationalStore --recovery-point-id $RECOVERY_POINT_ID --restore-configuration restoreconfig.json --backup-instance-id /subscriptions/$SUBSCRIPTION_ID/resourceGroups/$VAULT_RG/providers/Microsoft.DataProtection/backupVaults/$VAULT_NAME/backupInstances/$BACKUP_INSTANCE_NAME >restorerequestobject.json
 ```
 
 7. Now, you can update the JSON object as per your requirements, and then validate the object by running the following command:
