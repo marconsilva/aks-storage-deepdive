@@ -53,7 +53,7 @@ az network vnet subnet create --resource-group $RESOURCE_GROUP_MC --vnet-name $V
 Now save the subnet id to a variable for later use.
 
 ```powershell
-$SUBNET_ID=(az network vnet subnet show --resource-group $RESOURCE_GROUP_MC --vnet-name $VNET_NAME --name $SUBNET_NAME --query id -o tsv)
+$SUBNET_ID=$(az network vnet subnet show --resource-group $RESOURCE_GROUP_MC --vnet-name $VNET_NAME --name $SUBNET_NAME --query id -o tsv)
 ```
 
 ### 1. Provision Azure NetApp Files NFS volumes for Azure Kubernetes Service
