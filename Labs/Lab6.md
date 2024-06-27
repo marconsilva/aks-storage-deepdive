@@ -29,7 +29,7 @@ kubectl apply -f acstor-storagepool-nvme.yaml
 You can run this command to check the status of the storage pool:
 
 ```powershell
-kubectl describe sp ephemeraldisknvme -n acstor
+kubectl describe sp ephemeraldisk-nvme -n acstor
 ```
 
 When the storage pool is created, Azure Container Storage will create a storage class on your behalf, using the naming convention acstor-<storage-pool-name>.
