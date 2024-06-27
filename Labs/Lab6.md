@@ -59,7 +59,7 @@ kubectl describe pvc fiopod-nvme-ephemeralvolume
 Now lets run a benchmark on the pod to see the performance of the temp SSD.
 
 ```powershell
-kubectl exec -it fiopod-nvme -- fio-nvme --name=benchtest --size=800m --filename=/volume/test --direct=1 --rw=randrw --ioengine=libaio --bs=4k --iodepth=16 --numjobs=8 --time_based --runtime=60
+kubectl exec -it fiopod-nvme -- fio --name=benchtest --size=800m --filename=/volume/test --direct=1 --rw=randrw --ioengine=libaio --bs=4k --iodepth=16 --numjobs=8 --time_based --runtime=60
 ```
 
 
