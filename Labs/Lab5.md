@@ -58,7 +58,7 @@ Create a volume using the az netappfiles volume create command:
 az netappfiles volume create --resource-group $RESOURCE_GROUP --location $LOCATION --account-name $ANF_ACCOUNT_NAME --pool-name $POOL_NAME --name "$VOLUME_NAME" --service-level $SERVICE_LEVEL --vnet $VNET_ID --subnet $SUBNET_ID --usage-threshold $VOLUME_SIZE_GIB --file-path $UNIQUE_FILE_PATH --protocol-types NFSv3
 ```
 
-Retrieve the volume inofrmation using the az netappfiles volume show command:
+Retrieve the volume information using the az netappfiles volume show command:
 
 ```powershell
 az netappfiles volume show --resource-group $RESOURCE_GROUP --account-name $ANF_ACCOUNT_NAME --pool-name $POOL_NAME --volume-name "$VOLUME_NAME" -o JSON
