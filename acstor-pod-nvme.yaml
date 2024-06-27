@@ -4,7 +4,7 @@ metadata:
   name: fiopod-nvme
 spec:
   nodeSelector:
-    acstor.azure.com/io-engine: acstor
+    node.kubernetes.io/instance-type: Standard_L16s_v3
   containers:
     - name: fio
       image: nixery.dev/shell/fio
