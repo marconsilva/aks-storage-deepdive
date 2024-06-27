@@ -35,8 +35,8 @@ SA_NAME="storage4aks1backupdemo"
 SA_RG="rg-backup-storage"
 BLOB_CONTAINER_NAME="aks-backup"
 SUBSCRIPTION_ID=$(az account list --query [?isDefault].id -o tsv)
-AKS_RG_01=""
-AKS_01=""
+AKS_RG_01="aksstoragelab"
+AKS_01="aksstoragelab"
 ```
 
 ## Step 1: Setup Backup Infrastructure
