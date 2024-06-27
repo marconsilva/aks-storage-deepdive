@@ -165,6 +165,55 @@ Events:
   Normal  Started                 10s   kubelet     
 ```
 
+### 3. Dynamically configure for applications that use SMB volumes
+
+**PRE-REQUISITES:**
+The AKS cluster must be set up with at least one Windows node pool. The AKS cluster must have connectivity to an Active Directory. Verify that the AKS host can resolve DNS to the AKS cluster.
+
+See: https://techcommunity.microsoft.com/t5/azure-architecture-blog/azure-netapp-files-smb-volumes-for-azure-kubernetes-services/ba-p/3052900
 
 
-### 3. Provision Azure NetApp Files dual-protocol volumes for Azure Kubernetes Service
+With Astra Trident Already installed from previous lab, the following steps are needed to dynamically provision SMB volumes on Azure NetApp Files and automatically mount them to containerized applications.
+
+Use the files **backend-secret-smb.yaml** and **backend-anf-smb.yaml** as a templates and change the Client ID and clientSecret to the correct values for your environment (same logic that previously backend created, and we can reuse the service principal clientID and TenantID, since it already has permissions).
+
+Create the backend using the kubectl apply command:
+
+```powershell
+kubectl apply -f backend-secret.yaml -n trident
+kubectl apply -f backend-anf.yaml -n trident
+kubectl get tridentbackends -n trident
+```
+
+Create a secret with the domain credentials for SMB
+
+Create a secret on your AKS cluster to access the AD server using the kubectl create secret command. This information will be used by the Kubernetes persistent volume to access the Azure NetApp Files SMB volume. Use the following command, replacing DOMAIN_NAME\USERNAME with your domain name and username and PASSWORD with your password.
+
+```powershell	
+kubectl create secret generic smbcreds --from-literal=username=DOMAIN_NAME\USERNAME –from-literal=password="PASSWORD"
+
+kubectl get secrets
+```
+
+A storage class is used to define how a unit of storage is dynamically created with a persistent volume. To consume Azure NetApp Files volumes, a storage class must be created.
+
+```powershell
+kubectl apply -f anf-storageclass-smb.yaml
+kubectl get sc anf-sc-smb
+```
+
+A persistent volume claim (PVC) is a request for storage by a user. Upon the creation of a persistent volume claim, Astra Trident automatically creates an Azure NetApp Files SMB share and makes it available for Kubernetes workloads to consume.
+
+```powershell
+kubectl apply -f anf-pvc-smb.yaml
+kubectl get pvc
+```
+
+After the PVC is created, a pod can be spun up to access the Azure NetApp Files volume. The following manifest can be used to define an Internet Information Services (IIS) pod that mounts the Azure NetApp Files SMB share created in the previous step. In this example, the volume is mounted at /inetpub/wwwroot.
+
+
+```powershell
+kubectl apply -f anf-iis-deploy-pod.yaml
+kubectl describe pod iis-pod
+kubectl exec -it iis-pod –- cmd.exe
+```

@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod 
+metadata:
+  name: iis-pod
+  labels:
+     app: web
+spec:
+  nodeSelector:
+    "kubernetes.io/os": windows
+  volumes:
+  - name: smb
+    persistentVolumeClaim:
+      claimName: anf-pvc-smb 
+  containers:
+  - name: web
+    image: mcr.microsoft.com/windows/servercore/iis:windowsservercore 
+    resources:
+      limits:
+        cpu: "1"
+        memory: 800M
+    ports:
+      - containerPort: 80
+    volumeMounts:
+    - name: smb
+      mountPath: "/inetpub/wwwroot"
+      readOnly: false

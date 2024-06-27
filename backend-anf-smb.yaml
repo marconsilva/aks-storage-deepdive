@@ -1,0 +1,14 @@
+apiVersion: trident.netapp.io/v1
+kind: TridentBackendConfig
+metadata:
+  name: backend-tbc-anf-smb
+spec:
+  version: 1
+  storageDriverName: azure-netapp-files
+  subscriptionID: #CHANGE TO THE CORRECT VALUE FOR YOUR ENVIRONMENT
+  tenantID: #CHANGE TO THE CORRECT VALUE FOR YOUR ENVIRONMENT
+  location: wsteurope
+  serviceLevel: Standard
+  credentials:
+    name: backend-tbc-anf-secret
+  nasType: smb
