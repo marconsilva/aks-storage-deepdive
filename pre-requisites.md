@@ -7,7 +7,7 @@ $RESOURCE_GROUP="aksstoragelab"
 $CLUSTER="aksstoragelab"
 $LOCATION="westeurope"
 $VAULT_NAME="aksstoragelabkv"
-$EsanName   = "aksstoragelabsan"
+$EsanName = "aksstoragelabsan"
 $EsanVgName = "aksstoragelabsanvg"
 $VolumeName = "aksstoragelabsanvol"
 ```

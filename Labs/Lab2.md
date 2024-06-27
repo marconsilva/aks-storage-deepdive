@@ -35,6 +35,25 @@ Volumes are usable partitions of the SAN's total capacity, you must allocate a p
 az elastic-san volume create --elastic-san-name $EsanName -g $RESOURCE_GROUP -v $EsanVgName -n $VolumeName --size-gib 2000
 ```
 
+Now we need to connect the volume to the AKS cluster. To do this, we need to get the iSCSI target information. Run the following command to get the iSCSI target information:
+
+To do this go to the azure portal and navigate to the Elastic SAN resource you created and click on the volume you created. In the volume details page, click on the **Connect** button and copy the iSCSI target information.
+
+First add the service endpoint to the AKS Cluster vnet.
+
+```powershell
+az network vnet subnet update --resource-group $RESOUCE_GROUP_MC --vnet-name $VNET_NAME --name "aks-subnet" --service-endpoints "Microsoft.Storage.Global" 
+```
+
+and now add the network rule for a virtual network and subnet.
+
+```powershell
+# First, get the current length of the list of virtual networks. This is needed to ensure you append a new network instead of replacing existing ones.
+$virtualNetworkListLength = az elastic-san volume-group show -e $EsanName -n $EsanVgName -g $RESOURCE_GROUP --query 'length(networkAcls.virtualNetworkRules)'
+
+az elastic-san volume-group update -e $EsanName -g $RESOURCE_GROUP --name $EsanVgName --network-acls virtual-network-rules[$virtualNetworkListLength] "{virtualNetworkRules:[{id:/subscriptions/subscriptionID/resourceGroups/RGName/providers/Microsoft.Network/virtualNetworks/$VNET_NAME/subnets/default, action:Allow}]}"
+```
+
 ### 3. Using Kubernetes iSCSI CSI driver with Azure Elastic SAN
 
 Before we start check to see that the driver isn't installed and then run the following script to install the driver.
@@ -69,7 +88,7 @@ Now you will need to make a copy of the esan-pv.yaml file and replace the placeh
 After creating the pv.yml file, create a persistent volume with the following command:
 
 ```powershell	
-kubectl apply -f pathtoyourfile/esan-pv.yaml
+kubectl apply -f esan-pv.yaml
 ```
 
 now lets create a namespace **aksesan**
@@ -87,7 +106,7 @@ kubectl apply -f esan-pvc.yaml
 To verify your PersistentVolumeClaim is created and bound to the PersistentVolume, run the following command:
 
 ```powershell
-kubectl get pvc iscsiplugin-pvc
+kubectl get pvc iscsiplugin-pvc -n aksesan
 ```
 
 Finally lets create a pod manifest that uses this volume.
@@ -95,5 +114,11 @@ Finally lets create a pod manifest that uses this volume.
 ```powershell
 kubectl apply -f esan-pod.yaml
 kubectl apply -f esan-pod-service.yaml
+```
+
+Now use the following command to check the status of the pod and that the volume is correctly mounted and the pod is able to access it:
+
+```powershell
+kubectl describe pod esan-nginx -n aksesan
 ```
 

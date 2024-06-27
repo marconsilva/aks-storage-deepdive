@@ -16,10 +16,10 @@ spec:
     volumeHandle: iscsi-data-id
     volumeAttributes:
       # targetPortal: "yourTargetPortal:yourTargetPortalPort"
-      targetPortal: "es-us4x0sdws2z1.z42.blob.storage.azure.net:3260"
+      targetPortal: "es-qshisww03zo1.z3.blob.storage.azure.net:3260"
       portals: "[]"
       # iqn: "yourIQN"
-      iqn: "iqn.2024-06.net.windows.core.blob.ElasticSan.es-us4x0sdws2z1:aksstoragelabsanvol"
+      iqn: "iqn.2024-06.net.windows.core.blob.ElasticSan.es-qshisww03zo1:aksstoragelabsanvol"
       lun: "0"
       iscsiInterface: "default"
       discoveryCHAPAuth: "true"
