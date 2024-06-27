@@ -15,7 +15,7 @@ Ephemeral Disk is only available in certain types of VMs. If you plan to use Eph
 we will need to create a new AKS Node Pool with the required VM type.
 
 ```powershell
-az aks nodepool add --resource-group $RESOURCE_GROUP --cluster-name $CLUSTER --name tempssd --node-count 3 --node-vm-size Standard_E8s_v3 --node-osdisk-type Ephemeral --Label "acstor.azure.com/io-engine=acstor"
+az aks nodepool add --resource-group $RESOURCE_GROUP --cluster-name $CLUSTER --name tempssd --node-count 3 --node-vm-size Standard_E8s_v3 --node-osdisk-type Ephemeral --label "acstor.azure.com/io-engine=acstor"
 ```
 
 ### 2. Creating the Storage Pool
