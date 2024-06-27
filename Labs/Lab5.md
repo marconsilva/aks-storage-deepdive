@@ -17,13 +17,15 @@ Let's start by creating a new NetFiles Account and pool.
 
 ```powershell
 az netappfiles account create --resource-group $RESOURCE_GROUP --location $LOCATION --account-name $ANF_ACCOUNT_NAME
+
 az netappfiles pool create --resource-group $RESOURCE_GROUP --location $LOCATION --account-name $ANF_ACCOUNT_NAME --pool-name $POOL_NAME --size $SIZE --service-level $SERVICE_LEVEL
+
 ```
 
 Now we need to create a new Subnet for the Azure NetApp Files service. This subnet must be in the same virtual network as your AKS cluster.
 
 ```powershell
-az network vnet subnet create --resource-group $RESOURCE_GROUP --vnet-name $VNET_NAME --name $SUBNET_NAME --delegations "Microsoft.Netapp/volumes" --address-prefixes $ADDRESS_PREFIX
+az network vnet subnet create --resource-group $RESOURCE_GROUP_MC --vnet-name $VNET_NAME --name $SUBNET_NAME --delegations "Microsoft.Netapp/volumes" --address-prefixes $ADDRESS_PREFIX
 ```
 
 ### 1. Provision Azure NetApp Files NFS volumes for Azure Kubernetes Service
@@ -35,6 +37,15 @@ Create a volume using the az netappfiles volume create command:
 ```powershell
 az netappfiles volume create --resource-group $RESOURCE_GROUP --location $LOCATION --account-name $ANF_ACCOUNT_NAME --pool-name $POOL_NAME --name "$VOLUME_NAME" --service-level $SERVICE_LEVEL --vnet $VNET_ID --subnet $SUBNET_ID --usage-threshold $VOLUME_SIZE_GIB --file-path $UNIQUE_FILE_PATH --protocol-types NFSv3
 ```
+
+Retrieve the volimne inofrmation using the az netappfiles volume show command:
+
+```powershell
+az netappfiles volume show --resource-group $RESOURCE_GROUP --account-name $ANF_ACCOUNT_NAME --pool-name $POOL_NAME --volume-name "$VOLUME_NAME" -o JSON
+```
+
+Make sure the server matches the output IP address from Step 1, and the path matches the output from creationToken above. The capacity must also match the volume size from the step above. 
+
 With the volume creates, we can now create the persistent volume using the kubectl apply command:
 
 ```powershell
@@ -84,7 +95,75 @@ Filesystem             Size  Used Avail Use% Mounted on
 ...
 ```
 
-### 2. Provision Azure NetApp Files SMB volumes for Azure Kubernetes Service
+### 2. Dynamically configure for applications that use NFS volumes
+
+Astra Trident may be used to dynamically provision NFS or SMB files on Azure NetApp Files. Dynamically provisioned SMB volumes are only supported with windows worker nodes. This section describes how to use Astra Trident to dynamically create an NFS volume on Azure NetApp Files and automatically mount it to a containerized application.
+
+Lets first install Astra Trident using Helm
+
+```powershell
+helm repo add netapp-trident https://netapp.github.io/trident-helm-chart   
+helm install trident netapp-trident/trident-operator --version 23.04.0  --create-namespace --namespace trident
+
+kubectl describe torc trident
+```
+
+To instruct Astra Trident about the Azure NetApp Files subscription and where it needs to create volumes, a backend is created. This step requires details about the account that was created in a previous step.
+
+Using the file already created **backend-secret.yaml** as a template, change the Client ID and clientSecret to the correct values for your environment. also using the file already created **backend-anf.yaml** as a template, change the **subscriptionID** and **tenantID** to the correct values for your environment. 
+
+Use the subscriptionID for the Azure subscription where Azure NetApp Files is enabled. Obtain the tenantID, clientID, and clientSecret from an application registration in Microsoft Entra ID with sufficient permissions for the Azure NetApp Files service. The application registration includes the Owner or Contributor role predefined by Azure. The location must be an Azure location that contains at least one delegated subnet created in a previous step. The serviceLevel must match the serviceLevel configured for the capacity pool in Configure Azure NetApp Files for AKS workloads.
+
+You can now create the backend using the kubectl apply command:
+
+```powershell
+kubectl create namespace trident
+kubectl apply -f backend-secret.yaml -n trident
+kubectl apply -f backend-anf.yaml -n trident
+kubectl get tridentbackends -n trident
+```
+
+A storage class is used to define how a unit of storage is dynamically created with a persistent volume. To consume Azure NetApp Files volumes, a storage class must be created.
+
+```powershell	
+kubectl apply -f anf-storageclass.yaml
+kubectl get sc
+```
+
+Now we can create a PVC using the kubectl apply command:
+
+```powershell
+kubectl apply -f anf-pvc.yaml
+kubectl get pvc
+```
+
+After the PVC is created, Astra Trident creates the persistent volume. A pod can be spun up to mount and access the Azure NetApp Files volume.
+
+The following manifest can be used to define an NGINX pod that mounts the Azure NetApp Files volume created in the previous step. In this example, the volume is mounted at /mnt/data.
+
+    
+```powershell
+kubectl apply -f anf-nginx-pod.yaml
+kubectl describe pod nginx-pod
+```
+
+Verify the volume is mounted
+
+```powershell
+kubectl exec -it nginx-pod -- sh
+df -h
+```
+
+```output
+Events:
+  Type    Reason                  Age   From                     Message
+  ----    ------                  ----  ----                     -------
+  Normal  Scheduled               15s   default-scheduler        Successfully assigned trident/nginx-pod to brameshb-non-root-test
+  Normal  SuccessfulAttachVolume  15s   attachdetach-controller  AttachVolume.Attach succeeded for volume "pvc-bffa315d-3f44-4770-86eb-c922f567a075"
+  Normal  Pulled                  12s   kubelet                  Container image "mcr.microsoft.com/oss/nginx/nginx:1.15.5-alpine" already present on machine
+  Normal  Created                 11s   kubelet                  Created container nginx
+  Normal  Started                 10s   kubelet     
+```
 
 
 

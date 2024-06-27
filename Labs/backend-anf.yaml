@@ -1,0 +1,13 @@
+apiVersion: trident.netapp.io/v1
+kind: TridentBackendConfig
+metadata:
+  name: backend-tbc-anf
+spec:
+  version: 1
+  storageDriverName: azure-netapp-files
+  subscriptionID: 
+  tenantID: 
+  location: westeurope
+  serviceLevel: Standard
+  credentials:
+    name: backend-tbc-anf-secret
