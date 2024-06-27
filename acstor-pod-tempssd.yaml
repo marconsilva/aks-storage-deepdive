@@ -2,6 +2,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: fiopod-tempssd
+  namespace: acstor
 spec:
   nodeSelector:
     node.kubernetes.io/instance-type: Standard_E8s_v3
