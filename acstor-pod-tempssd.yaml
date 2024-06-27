@@ -4,7 +4,7 @@ metadata:
   name: fiopod-tempssd
 spec:
   nodeSelector:
-    acstor.azure.com/io-engine: acstor
+    node.kubernetes.io/instance-type: Standard_E8s_v3
   containers:
     - name: fio
       image: nixery.dev/shell/fio
@@ -25,10 +25,5 @@ spec:
             accessModes: [ "ReadWriteOnce" ]
             storageClassName: "acstor-ephemeraldisk" # replace with the name of your storage class if different
             resources:
-              requests:
+              requests: 
                 storage: 1Gi
-  tolerations:
-  - key: "tempssd"
-    operator: "Equal"
-    value: "true"
-    effect: "NoSchedule"

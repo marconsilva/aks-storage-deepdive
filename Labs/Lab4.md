@@ -6,7 +6,7 @@ When your application needs sub-millisecond storage latency and doesn't require 
 
 There are two types of Ephemeral Disk available: NVMe and temp SSD. NVMe is designed for high-speed data transfer between storage and CPU. Choose NVMe when your application requires higher IOPS and throughput than temp SSD, or if your workload requires replication. Replication isn't currently supported for temp SSD.
 
-In this lab we will be working with Temp SSD.
+ih this lab we will be working with Temp SSD.
 
 ### 1. Choosing a VM Type that supports Temp SSD
 
@@ -15,7 +15,7 @@ Ephemeral Disk is only available in certain types of VMs. If you plan to use Eph
 we will need to create a new AKS Node Pool with the required VM type.
 
 ```powershell
-az aks nodepool add --resource-group $RESOURCE_GROUP --cluster-name $CLUSTER --name tempssd --node-count 3 --node-vm-size Standard_E8s_v3 --node-osdisk-type Ephemeral --node-taints "tempssd=true:NoSchedule"
+az aks nodepool add --resource-group $RESOURCE_GROUP --cluster-name $CLUSTER --name tempssd --node-count 3 --node-vm-size Standard_E8s_v3 --node-osdisk-type Ephemeral --Label "acstor.azure.com/io-engine=acstor"
 ```
 
 ### 2. Creating the Storage Pool

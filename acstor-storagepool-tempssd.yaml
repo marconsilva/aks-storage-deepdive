@@ -2,7 +2,7 @@ apiVersion: containerstorage.azure.com/v1
 kind: StoragePool
 metadata:
   name: ephemeraldisk
-  namespace: acstor
+  namespace: acstor-tempssd
 spec:
   poolType:
     ephemeralDisk:
