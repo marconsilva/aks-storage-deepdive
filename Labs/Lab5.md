@@ -25,6 +25,14 @@ $VNET_NAME="" # Replace with the vnet name from the AKS cluster
 $RESOURCE_GROUP_MC="" # Replace with the resource group name of the AKS cluster
 $SUBNET_NAME="aksstoragelabANFSubnet"
 $ADDRESS_PREFIX="10.225.0.0/16"
+$ANF_ACCOUNT_NAME="aksstoragelabanf"
+$POOL_NAME="aksstoragelabpool1"
+$SIZE="10" # size in TiB
+$SERVICE_LEVEL="Standard" # valid values are Standard, Premium and Ultra
+
+$UNIQUE_FILE_PATH="myfilepath"
+$VOLUME_SIZE_GIB="100"
+$VOLUME_NAME="myvolname"
 ```
 
 Let's start by creating a new NetFiles Account and pool.

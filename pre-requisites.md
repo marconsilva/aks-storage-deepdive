@@ -10,25 +10,6 @@ $VAULT_NAME="aksstoragelabkv"
 $EsanName   = "aksstoragelabsan"
 $EsanVgName = "aksstoragelabsanvg"
 $VolumeName = "aksstoragelabsanvol"
-
-$ANF_ACCOUNT_NAME="aksstoragelabanf"
-$POOL_NAME="aksstoragelabpool1"
-$SIZE="10" # size in TiB
-$SERVICE_LEVEL="Standard" # valid values are Standard, Premium and Ultra
-
-$UNIQUE_FILE_PATH="myfilepath"
-$VOLUME_SIZE_GIB="100"
-$VOLUME_NAME="myvolname"
-
-$CLUSTER_1="aksstoragelab-1"
-$RESOURCE_GROUP_1="aksstoragelab-1"
-$CLUSTER_2="aksstoragelab-2"
-$RESOURCE_GROUP_2="aksstoragelab-2"
-$BACK_VAULT_NAME="backup-vault"
-$RESOURCE_GROUP_VAULT="rg-backup-vault"
-$SA_NAME="storagelabaks1backup13"
-$SA_RG="rg-backup-storage"
-$BLOB_CONTAINER_NAME="aks-backup"
 ```
 
 ```powershell
