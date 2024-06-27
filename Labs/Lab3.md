@@ -29,8 +29,10 @@ az k8s-extension list --cluster-name $CLUSTER --resource-group $RESOURCE_GROUP -
 ```
 We need to add the **acstor.azure.com/io-engine:acstor** lable to the **nodepool1** nodepool, so the Azure Container Storage can use it as a storage pool.
 
+from there you can get the name of the nodepool1 nodepool and run the following command to add the label to the nodepool:
+
 ```powershell
-kubectl label node -n acstor --overwrite nodepool1 acstor.azure.com/io-engine=acstor
+az aks nodepool add-labels --cluster-name $CLUSTER --resource-group $RESOURCE_GROUP --nodepool-name nodepool1 --labels acstor.azure.com/io-engine=acstor
 ```
 
 Congratulations, you've successfully installed Azure Container Storage. You now have new storage classes that you can use for your Kubernetes workloads.
