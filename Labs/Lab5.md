@@ -13,6 +13,20 @@ Using a CSI driver to directly consume Azure NetApp Files volumes from AKS workl
 
 You can take advantage of Astra Trident's Container Storage Interface (CSI) driver for Azure NetApp Files to abstract underlying details and create, expand, and snapshot volumes on-demand. Also, using Astra Trident enables you to use Astra Control Service built on top of Astra Trident. Using the Astra Control Service, you can backup, recover, move, and manage the application-data lifecycle of your AKS workloads across clusters within and across Azure regions to meet your business and service continuity needs.
 
+First some Pre-requisites are needed to be done before we can start with the lab.
+
+For this lab we will need to extend the vnet space of the AKS Cluster vnet to add a subnet for the new Azure NetApp Files account and pool.
+
+To do this we will need to set some variables for the rest of the lab to work.
+
+```powershell
+$VNET_ID="" # Replace with the vnet id from the AKS cluster
+$VNET_NAME="" # Replace with the vnet name from the AKS cluster
+$RESOURCE_GROUP_MC="" # Replace with the resource group name of the AKS cluster
+$SUBNET_NAME="aksstoragelabANFSubnet"
+$ADDRESS_PREFIX="10.225.0.0/16"
+```
+
 Let's start by creating a new NetFiles Account and pool.
 
 ```powershell
@@ -28,6 +42,12 @@ Now we need to create a new Subnet for the Azure NetApp Files service. This subn
 az network vnet subnet create --resource-group $RESOURCE_GROUP_MC --vnet-name $VNET_NAME --name $SUBNET_NAME --delegations "Microsoft.Netapp/volumes" --address-prefixes $ADDRESS_PREFIX
 ```
 
+Now save the subnet id to a variable for later use.
+
+```powershell
+$SUBNET_ID=(az network vnet subnet show --resource-group $RESOURCE_GROUP_MC --vnet-name $VNET_NAME --name $SUBNET_NAME --query id -o tsv)
+```
+
 ### 1. Provision Azure NetApp Files NFS volumes for Azure Kubernetes Service
 
 This section describes how to create an NFS volume on Azure NetApp Files and expose the volume statically to Kubernetes. It also describes how to use the volume with a containerized application.
@@ -38,7 +58,7 @@ Create a volume using the az netappfiles volume create command:
 az netappfiles volume create --resource-group $RESOURCE_GROUP --location $LOCATION --account-name $ANF_ACCOUNT_NAME --pool-name $POOL_NAME --name "$VOLUME_NAME" --service-level $SERVICE_LEVEL --vnet $VNET_ID --subnet $SUBNET_ID --usage-threshold $VOLUME_SIZE_GIB --file-path $UNIQUE_FILE_PATH --protocol-types NFSv3
 ```
 
-Retrieve the volimne inofrmation using the az netappfiles volume show command:
+Retrieve the volume inofrmation using the az netappfiles volume show command:
 
 ```powershell
 az netappfiles volume show --resource-group $RESOURCE_GROUP --account-name $ANF_ACCOUNT_NAME --pool-name $POOL_NAME --volume-name "$VOLUME_NAME" -o JSON

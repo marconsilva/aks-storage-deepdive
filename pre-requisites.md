@@ -14,17 +14,11 @@ $VolumeName = "aksstoragelabsanvol"
 $ANF_ACCOUNT_NAME="aksstoragelabanf"
 $POOL_NAME="aksstoragelabpool1"
 $SIZE="10" # size in TiB
-$SERVICE_LEVEL="Premium" # valid values are Standard, Premium and Ultra
-$VNET_NAME="aksstoragelabvnet"
-$SUBNET_NAME="aksstoragelabANFSubnet"
-$ADDRESS_PREFIX="myprefix"
+$SERVICE_LEVEL="Standard" # valid values are Standard, Premium and Ultra
 
-
-$UNIQUE_FILE_PATH="aksstoragelabfilepath"
-$VOLUME_SIZE_GIB="myvolsize"
-$VOLUME_NAME="aksstoragelabvolname"
-$VNET_ID="vnetId"
-$SUBNET_ID="anfSubnetId"
+$UNIQUE_FILE_PATH="myfilepath"
+$VOLUME_SIZE_GIB="100"
+$VOLUME_NAME="myvolname"
 
 $CLUSTER_1="aksstoragelab-1"
 $RESOURCE_GROUP_1="aksstoragelab-1"
