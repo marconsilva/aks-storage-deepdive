@@ -20,7 +20,7 @@ For this lab we will need to extend the vnet space of the AKS Cluster vnet to ad
 To do this we will need to set some variables for the rest of the lab to work.
 
 ```powershell
-$VNET_ID="" # Replace with the vnet id from the AKS cluster
+$VNET_ID="" # Replace with the vnet resource id (full path) from the AKS cluster
 $VNET_NAME="" # Replace with the vnet name from the AKS cluster
 $RESOURCE_GROUP_MC="" # Replace with the resource group name of the AKS cluster
 $SUBNET_NAME="aksstoragelabANFSubnet"
