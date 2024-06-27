@@ -15,11 +15,9 @@ spec:
     driver: iscsi.csi.k8s.io
     volumeHandle: iscsi-data-id
     volumeAttributes:
-      # targetPortal: "yourTargetPortal:yourTargetPortalPort"
-      targetPortal: "es-qshisww03zo1.z3.blob.storage.azure.net:3260"
+      targetPortal: "yourTargetPortal:yourTargetPortalPort"
       portals: "[]"
-      # iqn: "yourIQN"
-      iqn: "iqn.2024-06.net.windows.core.blob.ElasticSan.es-qshisww03zo1:aksstoragelabsanvol"
+      iqn: "yourIQN"
       lun: "0"
       iscsiInterface: "default"
       discoveryCHAPAuth: "true"
